@@ -23,32 +23,14 @@ Set `forms.enabled = true` in `config.toml` to use a GUI form like the original 
 The `[endstone]` section in `config.toml` contains settings that do not exist in the original
 version and are required because of architectural differences:
 
-- `inventory-scan-interval` — how often (in ticks) the entire inventory is rescanned for new
+- `inventory-scan-interval` how often (in ticks) the entire inventory is rescanned for new
   enchants; armor and the held item are always checked every tick.
-- `emulate-ignite` — Endstone cannot call `setOnFire()`, so enchants such as Molten briefly
+- `emulate-ignite` Endstone cannot call `setOnFire()`, so enchants such as Molten briefly
   place a fire block at the target's feet. This can be disabled.
-- `explosion-max-size` / `explosion-max-blocks` — limits for custom explosion size (Explosive,
+- `explosion-max-size` / `explosion-max-blocks` limits for custom explosion size (Explosive,
   TNT) and the number of blocks it may remove, preventing server lag at very high enchant levels.
-- `debug` — when `true`, all failed operations (failed vanilla commands, missing actors, etc.)
+- `debug` when `true`, all failed operations (failed vanilla commands, missing actors, etc.)
   are written to the server log.
-
-## Project structure
-
-```
-src/endstone_piggy_custom_enchants/
-  plugin.py        # main Plugin class, lifecycle, command/effect/damage utilities
-  engine.py         # player equipment scanning, reaction dispatch, tick, toggle
-  manager.py        # enchant registry, compatibility, applying/removing enchants from items
-  storage.py        # reading/writing enchant data in item NBT (the "PiggyCE" tag)
-  compat.py         # bridge to vanilla commands (/effect, /damage, /setblock)
-  projectiles.py    # custom arrow detection and custom projectile simulation
-  motion.py         # teleport-based movement (Jetpack, Grappling, etc.)
-  explosion.py      # PiggyExplosion engine (ray cast + damage + drops)
-  enchants/         # each enchant implementation, grouped like the original structure
-tests/
-  test_core_logic.py  # unit tests (see the testing status section)
-  fake_pkg/endstone/  # minimal Endstone API mock used only for unit tests
-```
 
 ## License
 
