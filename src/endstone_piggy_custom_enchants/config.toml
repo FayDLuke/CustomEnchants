@@ -1,0 +1,69 @@
+# PiggyCustomEnchants for Endstone
+# Port of DaPigGuy's PiggyCustomEnchants. Data files (rarities.json, max_levels.json, display_names.json,
+# descriptions.json, extra_data.json, cooldowns.json and chances.json) are created next to this file and work
+# exactly like in the original plugin.
+
+# Colour of the enchant name in the item lore, by rarity.
+# Options: black, dark_blue, dark_green, dark_aqua, dark_red, dark_purple, gold, gray, dark_gray, blue, green,
+# aqua, red, light_purple, yellow, white
+[rarity-colors]
+common = "yellow"
+uncommon = "blue"
+rare = "gold"
+mythic = "light_purple"
+
+[enchants]
+# Enchants are always shown in the item lore on Endstone (the "name" position of the original is not portable).
+position = "lore"
+# Roman numerals for enchantment levels.
+roman-numerals = true
+# Enchant books: hold an enchanted book in the main hand, the target item in the off hand and right click.
+books = true
+# The vanilla "item name + enchant" box that pops up above the hotbar when you switch slots only reads real
+# vanilla enchantment data, so it never shows our custom enchants (only the full inventory screen does).
+# When true, we send our own popup with the item name + custom enchants on every hotbar switch to mimic it.
+# NOTE: the vanilla box (with just the plain item name) still appears on its own regardless of this setting,
+# since that part is entirely client-rendered; the two may visually overlap. Turn this off if that looks bad.
+show-switch-popup = true
+
+[forms]
+# Use forms for the /ce command.
+enabled = false
+
+# Enchants to disable ENTIRELY (name without spaces, e.g. "jetpack", "antiknockback").
+disabled-enchants = []
+
+# Enchants to disable in specific worlds/dimensions. The key is the level name or the dimension name.
+[per-world-disabled-enchants]
+NoJetpackWorld = ["jetpack"]
+
+# Whether an enchant is allowed to damage the world.
+[world-damage]
+blaze = true
+bombardment = true
+lightning = true   # informational only: vanilla lightning decides on its own whether it sets blocks on fire
+missile = true
+molotov = true
+self-destruct = true
+
+[chicken]
+# Items the Chicken enchant may lay as a treasure, "item id:amount".
+drops = ["minecraft:gold_ingot:1"]
+
+# ----- settings that only exist in the Endstone port ------------------------------------------------------
+[endstone]
+# How often (in ticks) the whole inventory is rescanned for enchants. Armor and the held item are read every tick.
+inventory-scan-interval = 5
+# Endstone cannot set entities on fire. When true a short-lived fire block is placed on the target instead.
+emulate-ignite = true
+# Also register the enchants Endstone cannot support at all (Grow, Shrink). They will not do anything.
+enable-unsupported = false
+# Largest explosion "size" (Explosive: level * sizeMultiplier) and largest number of blocks it may remove.
+explosion-max-size = 12
+explosion-max-blocks = 2500
+# Blast resistance used for blocks that are not in the built-in table.
+explosion-default-resistance = 3.0
+# Where the Radar compass points when nobody is around (Endstone cannot read the world spawn).
+radar-fallback = [0, 64, 0]
+# Verbose logging of skipped / failed operations.
+debug = false

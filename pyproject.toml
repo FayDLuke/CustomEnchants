@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "endstone-piggy-custom-enchants"
+version = "3.0.12"
+description = "Port of PiggyCustomEnchants (PocketMine-MP) to Endstone."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+keywords = ["endstone", "plugin", "enchantments", "bedrock"]
+dependencies = []
+authors = [
+    { name = "DaPigGuy (original)" },
+    { name = "Endstone port" },
+]
+
+[project.entry-points."endstone"]
+piggy_custom_enchants = "endstone_piggy_custom_enchants:PiggyCustomEnchants"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/endstone_piggy_custom_enchants"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+extend-select = ["I", "F"]
