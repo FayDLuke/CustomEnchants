@@ -13,7 +13,7 @@ keywords = ["endstone", "plugin", "enchantments", "bedrock"]
 dependencies = []
 authors = [
     { name = "DaPigGuy (original)" },
-    { name = "Endstone port" },
+    { name = "Luke (port)" },
 ]
 
 [project.entry-points."endstone"]
