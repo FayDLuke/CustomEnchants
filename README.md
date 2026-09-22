@@ -4,7 +4,7 @@
 
 ## Commands
 
-`/ce` (aliases: `/customenchants`, `/customenchant`):
+`/ce` (aliases: `/customenchants`, `/customenchant`
 
 | Subcommand | Purpose | Permission |
 |---|---|---|
@@ -18,55 +18,7 @@
 Set `forms.enabled = true` in `config.toml` to use a GUI form like the original version.
 
 
-## Fidelity Matrix
-
-**Full** — behavior is identical to the original version (using Endstone APIs directly, without
-emulation):
-
-Anti Knockback, Armored, Attacker Deterrent (Cursed/Drunk/Frozen/Hardened/Poisoned/Revulsion),
-Berserker, Blessed, Cactus, Chicken, Cloaking, Conditional Multiplier (Aerial/Backstab/Charge),
-Deathbringer, Deep Wounds, Disarming, Disarmor, Driller, Endershift, Energizing, Enlighted,
-Explosive, Farmer, Fertilizer, Gooey, Harvest, Headhunter, Healing, Heavy, Implants, Jackpot,
-Laced Weapon (Blind/Cripple/Poison/Wither), Lifesteal, Lightning, Lucky Charm, Lumberjack,
-Meditation, Molten, Overload, Parachute, Piercing, Poisonous Cloud, Quickening, Revive,
-Self Destruct, Shielded, Shuffle, Smelting, Soulbound, Stomp, Tank, Telepathy, Toggleable Effect
-(Enraged/Gears/Glowing/Haste/Obsidian Shield/Oxygenate/Springs), Vampire.
-
-**Emulated** — the final behavior is as close as possible, but replacement techniques are used
-because Endstone does not have equivalent events or setters. The details are documented in
-comments in the relevant source files:
-
-| Enchant | Replacement technique |
-|---|---|
-| Blaze, Wither Skull, Porkified, Homing | Projectiles are simulated directly (position and velocity are integrated each tick and collisions are checked manually), rather than using native Minecraft projectile entities with the `onHitEntity` hook |
-| Bombardment, Missile | Native TNT is spawned and then detonated through a custom explosion engine (a PocketMine-style block ray cast) |
-| Volley | Additional arrows are simulated rather than represented as native arrow entities |
-| Grappling | Pulling is simulated through incremental teleportation because Endstone has no velocity setter |
-| Forcefield | Entities are pushed through teleportation; incoming projectiles are **destroyed** rather than redirected |
-| Jetpack, Auto Aim | Flight and incoming-shot movement are simulated through per-tick teleportation |
-| Radar | A compass is used, but its target location is sent through a raw `SetSpawnPosition` packet — **risky**, see the warning above |
-| Hallucination | A block illusion is sent to one client through a raw `UpdateBlock` packet |
-| Antitoxin, Focused | There is no "effect added" event; poison and nausea effects are removed every few ticks after they appear |
-| Magma Walker | Lava detection and obsidian creation are handled manually, without a targeted `BlockUpdateEvent` |
-| Molotov | Fire areas are placed and removed automatically rather than using burning `FallingBlock` entities |
-| Prowl | Since Endstone has no `hidePlayer`/`showPlayer`, only invisibility and slowness are used; other players can still see a transparent outline instead of the player disappearing completely |
-| Spider | Since `setCanClimbWalls` is unavailable, jumps into walls are detected and the player is "stuck" to the wall by teleporting upward for several seconds |
-
-**Unsupported** — disabled by default (`enable-unsupported = false` in the config) because
-Endstone 0.11 has no API for changing entity sizes:
-
-- **Grow** and **Shrink** (require `Actor.setScale()`, for which no equivalent endpoint exists)
-
-The enchants remain registered and can be applied with `/ce enchant --override`, but they do
-nothing until Endstone adds the required API.
-
-**Intentionally not ported** (not gameplay mechanics; PocketMine-specific):
-
-- The `isCoolKid()` anti-tamper system and remote disable through the original author's Gist.
-- The update checker.
-- The dependency on PocketMine's virion library.
-
-## Additional settings for this port
+## Additional settings
 
 The `[endstone]` section in `config.toml` contains settings that do not exist in the original
 version and are required because of architectural differences:
