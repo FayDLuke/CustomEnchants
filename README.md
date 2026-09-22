@@ -1,154 +1,163 @@
-# PiggyCustomEnchants — Port untuk EndstoneMC
+# PiggyCustomEnchants — EndstoneMC Port
 
-Ini adalah hasil porting plugin **PiggyCustomEnchants** (PocketMine-MP, oleh DaPigGuy) ke
-[Endstone](https://endstone.dev/) 0.11.x untuk Minecraft: Bedrock Edition. Plugin ditulis ulang total
-dari PHP ke Python karena kedua platform tidak kompatibel secara biner maupun API.
+This is a port of the **PiggyCustomEnchants** plugin (PocketMine-MP, by DaPigGuy) to
+[Endstone](https://endstone.dev/) 0.11.x for Minecraft: Bedrock Edition. The plugin was fully
+rewritten from PHP to Python because the two platforms are not binary- or API-compatible.
 
-Semua 91 custom enchant dari plugin asli **terdaftar** dan bisa dipasang lewat `/ce enchant`. Sebagian
-besar bekerja persis seperti aslinya; sebagian lain diemulasikan karena Endstone 0.11 belum punya API
-yang setara PocketMine (lihat [Matriks Fidelity](#matriks-fidelity) di bawah). Tidak ada yang dihapus
-diam-diam — enchant yang tidak bisa diemulasikan tetap terdaftar tapi ditandai "unsupported" dan bisa
-dimatikan lewat config.
+All 91 custom enchants from the original plugin are **registered** and can be applied through
+`/ce enchant`. Most work exactly like the originals; some are emulated because Endstone 0.11 does
+not yet have APIs equivalent to PocketMine (see the [Fidelity Matrix](#fidelity-matrix) below).
+Nothing is silently removed — enchants that cannot be emulated remain registered, are marked
+"unsupported", and can be disabled through the config.
 
-## ⚠️ Status pengujian — baca ini dulu
+## ⚠️ Testing status — read this first
 
-Saya (asisten yang membuat porting ini) **tidak punya akses ke server Bedrock Dedicated Server** di
-lingkungan kerja saya, jadi kode ini **belum pernah dijalankan di server Endstone sungguhan**. Yang sudah
-saya verifikasi:
+I (the assistant who created this port) **do not have access to a Bedrock Dedicated Server** in
+my working environment, so this code has **not yet been run on a real Endstone server**. I have
+verified the following:
 
-- Seluruh kode berhasil di-*compile* (`python3 -m py_compile`) tanpa syntax error.
-- 13 unit test (`tests/test_core_logic.py`) lulus, mencakup: penyimpanan NBT (baca/tulis/pertahankan lore
-  lain), registrasi seluruh 91 enchant tanpa `KeyError`, pengecekan incompatibility antar enchant,
-  klasifikasi jenis item (pedang/bow/dst), dan logika `Engine` yang memindai equipment pemain (armor +
-  held item) serta rekonsiliasi toggle on/off.
-- Modul `plugin.py`, `listeners.py`, dan `commands.py` berhasil di-*import* penuh melawan modul `endstone`
-  tiruan (`tests/fake_pkg`), jadi tidak ada `ImportError`/`AttributeError` pada saat pemanggilan atribut
-  API yang saya asumsikan ada.
+- All code compiles (`python3 -m py_compile`) without syntax errors.
+- 13 unit tests (`tests/test_core_logic.py`) pass, covering NBT storage (reading, writing, and
+  preserving other lore), registration of all 91 enchants without `KeyError`, enchantment
+  incompatibility checks, item-type classification (swords, bows, etc.), and `Engine` logic that
+  scans player equipment (armor and held items) and reconciles the on/off toggle state.
+- The `plugin.py`, `listeners.py`, and `commands.py` modules import successfully against the
+  mock `endstone` module (`tests/fake_pkg`), with no `ImportError` or `AttributeError` when
+  accessing the API attributes assumed by the port.
 
-Yang **belum** bisa saya verifikasi (perlu kamu tes langsung di server):
-- Apakah command vanilla yang dipakai sebagai jembatan (`/effect`, `/damage`, `/setblock ... destroy`)
-  benar-benar berperilaku seperti yang saya asumsikan di versi Bedrock yang kamu pakai.
-- Apakah paket mentah `RadarEnchant` (SetSpawnPosition) dan `HallucinationEnchant` (UpdateBlock) diterima
-  klien tanpa membuatnya disconnect — ini teknik yang paling berisiko di seluruh porting ini.
-- Timing/rasa gerakan hasil emulasi teleport (Jetpack, Grappling, Forcefield, dll) — nilai kecepatan sudah
-  disalin dari rumus aslinya tapi belum dirasakan langsung.
-- Performa saat banyak pemain memakai enchant tick-heavy (Forcefield, PoisonousCloud, Vacuum) sekaligus.
+The following **could not** be verified yet and must be tested directly on a server:
 
-Mohon laporkan bug/rasa yang aneh supaya bisa diperbaiki lebih lanjut.
+- Whether the vanilla commands used as bridges (`/effect`, `/damage`, `/setblock ... destroy`)
+  behave as expected in the Bedrock version you use.
+- Whether the raw `RadarEnchant` (`SetSpawnPosition`) and `HallucinationEnchant` (`UpdateBlock`)
+  packets are accepted by clients without disconnecting them — this is the riskiest technique
+  used in this port.
+- The timing and feel of teleport-based movement emulation (Jetpack, Grappling, Forcefield,
+  etc.) — the speed values were copied from the original formulas but have not been experienced
+  directly.
+- Performance when many players use tick-heavy enchants (Forcefield, PoisonousCloud, Vacuum)
+  at the same time.
 
-## Instalasi
+Please report any bugs or unusual behavior so they can be fixed in future updates.
 
-1. Salin folder `endstone-piggy-custom-enchants/` ke server dengan Python 3.10+ dan Endstone 0.11 terpasang.
-2. Build wheel-nya:
+## Installation
+
+1. Copy the `endstone-piggy-custom-enchants/` folder to a server with Python 3.10+ and Endstone
+   0.11 installed.
+2. Build the wheel:
    ```bash
    cd endstone-piggy-custom-enchants
    pip install build
    python -m build
    ```
-3. Salin file `.whl` hasilnya ke folder `plugins/` server Endstone-mu, lalu jalankan server.
-4. Saat pertama kali menyala, plugin membuat `plugins/PiggyCustomEnchants/config.toml` beserta file data
-   `rarities.json`, `max_levels.json`, `display_names.json`, `descriptions.json`, `extra_data.json`,
-   `cooldowns.json`, dan `chances.json` — persis seperti versi PocketMine, jadi bisa kamu tuning tanpa
-   menyentuh kode.
+3. Copy the resulting `.whl` file to the server's `plugins/` folder, then start the server.
+4. On first startup, the plugin creates `plugins/PiggyCustomEnchants/config.toml` along with
+   the data files `rarities.json`, `max_levels.json`, `display_names.json`, `descriptions.json`,
+   `extra_data.json`, `cooldowns.json`, and `chances.json` — just like the PocketMine version,
+   so you can tune them without touching the code.
 
-## Perintah
+## Commands
 
-`/ce` (alias `/customenchants`, `/customenchant`):
+`/ce` (aliases: `/customenchants`, `/customenchant`):
 
-| Subcommand | Kegunaan | Permission |
+| Subcommand | Purpose | Permission |
 |---|---|---|
-| `/ce about` | Info versi plugin | `piggycustomenchants.command.ce.about` |
-| `/ce list` | Daftar semua enchant per kategori | `piggycustomenchants.command.ce.list` |
-| `/ce info <enchant>` | Detail satu enchant | `piggycustomenchants.command.ce.list` |
-| `/ce enchant <enchant> [level] [player]` | Pasang enchant ke item di tangan | `piggycustomenchants.command.ce.enchant` (default: op) |
-| `/ce remove <enchant> [player]` | Lepas enchant dari item di tangan | `piggycustomenchants.command.ce.remove` (default: op) |
-| `/ce nbt` | Tampilkan NBT item di tangan (debug) | `piggycustomenchants.command.ce.nbt` (default: op) |
+| `/ce about` | Show plugin version information | `piggycustomenchants.command.ce.about` |
+| `/ce list` | List all enchants by category | `piggycustomenchants.command.ce.list` |
+| `/ce info <enchant>` | Show details for one enchant | `piggycustomenchants.command.ce.list` |
+| `/ce enchant <enchant> [level] [player]` | Apply an enchant to the item in hand | `piggycustomenchants.command.ce.enchant` (default: op) |
+| `/ce remove <enchant> [player]` | Remove an enchant from the item in hand | `piggycustomenchants.command.ce.remove` (default: op) |
+| `/ce nbt` | Display the NBT of the item in hand (debug) | `piggycustomenchants.command.ce.nbt` (default: op) |
 
-Set `forms.enabled = true` di `config.toml` untuk memakai form GUI seperti versi asli.
+Set `forms.enabled = true` in `config.toml` to use a GUI form like the original version.
 
-### Buku enchant
+### Enchantment books
 
-Sama seperti aslinya: pegang buku (polos/enchanted) berisi enchant custom di tangan utama, taruh item
-target di tangan kedua (off-hand), lalu klik kanan. Ini menggantikan mekanisme "drag item ke book" di
-PocketMine yang tidak punya event setara di Endstone.
+As in the original: hold a plain or enchanted book containing a custom enchant in your main
+hand, place the target item in your off-hand, then right-click. This replaces PocketMine's
+"drag item onto book" mechanism, for which Endstone has no equivalent event.
 
-## Matriks Fidelity
+## Fidelity Matrix
 
-**Penuh** — perilaku sama persis dengan versi asli (memakai API Endstone langsung, tanpa emulasi):
+**Full** — behavior is identical to the original version (using Endstone APIs directly, without
+emulation):
 
-Anti Knockback, Armored, Attacker Deterrent (Cursed/Drunk/Frozen/Hardened/Poisoned/Revulsion), Berserker,
-Blessed, Cactus, Chicken, Cloaking, Conditional Multiplier (Aerial/Backstab/Charge), Deathbringer,
-Deep Wounds, Disarming, Disarmor, Driller, Endershift, Energizing, Enlighted, Explosive, Farmer,
-Fertilizer, Gooey, Harvest, Headhunter, Healing, Heavy, Implants, Jackpot, Laced Weapon
-(Blind/Cripple/Poison/Wither), Lifesteal, Lightning, Lucky Charm, Lumberjack, Meditation, Molten,
-Overload, Parachute, Piercing, Poisonous Cloud, Quickening, Revive, Self Destruct, Shielded, Shuffle,
-Smelting, Soulbound, Stomp, Tank, Telepathy, Toggleable Effect (Enraged/Gears/Glowing/Haste/Obsidian
-Shield/Oxygenate/Springs), Vampire.
+Anti Knockback, Armored, Attacker Deterrent (Cursed/Drunk/Frozen/Hardened/Poisoned/Revulsion),
+Berserker, Blessed, Cactus, Chicken, Cloaking, Conditional Multiplier (Aerial/Backstab/Charge),
+Deathbringer, Deep Wounds, Disarming, Disarmor, Driller, Endershift, Energizing, Enlighted,
+Explosive, Farmer, Fertilizer, Gooey, Harvest, Headhunter, Healing, Heavy, Implants, Jackpot,
+Laced Weapon (Blind/Cripple/Poison/Wither), Lifesteal, Lightning, Lucky Charm, Lumberjack,
+Meditation, Molten, Overload, Parachute, Piercing, Poisonous Cloud, Quickening, Revive,
+Self Destruct, Shielded, Shuffle, Smelting, Soulbound, Stomp, Tank, Telepathy, Toggleable Effect
+(Enraged/Gears/Glowing/Haste/Obsidian Shield/Oxygenate/Springs), Vampire.
 
-**Diemulasikan** — perilaku akhirnya semirip mungkin, tapi memakai teknik pengganti karena API Endstone
-tidak punya event/setter yang setara. Detail teknik ada sebagai komentar di kode masing-masing:
+**Emulated** — the final behavior is as close as possible, but replacement techniques are used
+because Endstone does not have equivalent events or setters. The details are documented in
+comments in the relevant source files:
 
-| Enchant | Teknik pengganti |
+| Enchant | Replacement technique |
 |---|---|
-| Blaze, Wither Skull, Porkified, Homing | Proyektil disimulasikan sendiri (posisi/kecepatan diintegrasikan per tick, tabrakan dicek manual), bukan entity proyektil asli Minecraft dengan hook `onHitEntity` |
-| Bombardment, Missile | TNT asli di-spawn lalu diledakkan lewat mesin ledakan buatan sendiri (ray-cast blok ala PocketMine `Explosion`) |
-| Volley | Anak panah tambahan disimulasikan (bukan entity panah asli) |
-| Grappling | Tarikan disimulasikan lewat teleport bertahap (tidak ada setter velocity di Endstone) |
-| Forcefield | Entitas didorong lewat teleport; proyektil masuk **dihancurkan** (tidak bisa membalik arah geraknya) |
-| Jetpack, Auto Aim | Gerak terbang/incoming-shot disimulasikan lewat teleport per tick |
-| Radar | Memakai compass, tapi menunjuk lokasi lewat paket mentah `SetSpawnPosition` — **berisiko**, lihat peringatan di atas |
-| Hallucination | Ilusi blok dikirim lewat paket mentah `UpdateBlock` ke satu klien saja |
-| Antitoxin, Focused | Tidak ada event "efek ditambahkan"; efek racun/mual dihapus lagi tiap beberapa tick setelah muncul |
-| Magma Walker | Deteksi lava & pembentukan obsidian manual (tanpa `BlockUpdateEvent` bertarget) |
-| Molotov | Area api dipasang & dihapus otomatis, bukan entity `FallingBlock` yang terbakar |
-| Prowl | Karena `hidePlayer`/`showPlayer` tidak ada di Endstone, disiasati dengan invisibility + slowness saja (pemain lain tetap melihat outline transparan, bukan benar-benar hilang) |
-| Spider | `setCanClimbWalls` tidak ada; disiasati dengan mendeteksi lompat ke tembok lalu "menempel" lewat teleport ke atas selama beberapa detik |
+| Blaze, Wither Skull, Porkified, Homing | Projectiles are simulated directly (position and velocity are integrated each tick and collisions are checked manually), rather than using native Minecraft projectile entities with the `onHitEntity` hook |
+| Bombardment, Missile | Native TNT is spawned and then detonated through a custom explosion engine (a PocketMine-style block ray cast) |
+| Volley | Additional arrows are simulated rather than represented as native arrow entities |
+| Grappling | Pulling is simulated through incremental teleportation because Endstone has no velocity setter |
+| Forcefield | Entities are pushed through teleportation; incoming projectiles are **destroyed** rather than redirected |
+| Jetpack, Auto Aim | Flight and incoming-shot movement are simulated through per-tick teleportation |
+| Radar | A compass is used, but its target location is sent through a raw `SetSpawnPosition` packet — **risky**, see the warning above |
+| Hallucination | A block illusion is sent to one client through a raw `UpdateBlock` packet |
+| Antitoxin, Focused | There is no "effect added" event; poison and nausea effects are removed every few ticks after they appear |
+| Magma Walker | Lava detection and obsidian creation are handled manually, without a targeted `BlockUpdateEvent` |
+| Molotov | Fire areas are placed and removed automatically rather than using burning `FallingBlock` entities |
+| Prowl | Since Endstone has no `hidePlayer`/`showPlayer`, only invisibility and slowness are used; other players can still see a transparent outline instead of the player disappearing completely |
+| Spider | Since `setCanClimbWalls` is unavailable, jumps into walls are detected and the player is "stuck" to the wall by teleporting upward for several seconds |
 
-**Tidak didukung** — dinonaktifkan secara default (`enable-unsupported = false` di config) karena Endstone
-0.11 tidak punya API untuk mengubah ukuran entitas:
+**Unsupported** — disabled by default (`enable-unsupported = false` in the config) because
+Endstone 0.11 has no API for changing entity sizes:
 
-- **Grow** dan **Shrink** (butuh `Actor.setScale()`, belum ada endpoint setara)
+- **Grow** and **Shrink** (require `Actor.setScale()`, for which no equivalent endpoint exists)
 
-Enchant tetap terdaftar dan bisa dipasang lewat `/ce enchant --override`, tapi tidak melakukan apa-apa
-selama Endstone belum menambah API-nya.
+The enchants remain registered and can be applied with `/ce enchant --override`, but they do
+nothing until Endstone adds the required API.
 
-**Sengaja tidak diporting** (bukan mekanisme gameplay, spesifik ke PocketMine):
-- Sistem anti-tamper `isCoolKid()` dan remote-disable via Gist milik penulis asli.
-- Update checker.
-- Ketergantungan pada library virion PocketMine.
+**Intentionally not ported** (not gameplay mechanics; PocketMine-specific):
 
-## Konfigurasi tambahan khusus port ini
+- The `isCoolKid()` anti-tamper system and remote disable through the original author's Gist.
+- The update checker.
+- The dependency on PocketMine's virion library.
 
-Bagian `[endstone]` di `config.toml` berisi pengaturan yang tidak ada di versi asli karena memang
-dibutuhkan akibat perbedaan arsitektur:
+## Additional settings for this port
 
-- `inventory-scan-interval` — seberapa sering (tick) seluruh inventory dipindai ulang untuk enchant baru;
-  armor dan item yang sedang dipegang selalu dicek tiap tick.
-- `emulate-ignite` — Endstone tidak punya `setOnFire()`, jadi enchant seperti Molten menyalakan blok api
-  sesaat di kaki target. Bisa dimatikan.
-- `explosion-max-size` / `explosion-max-blocks` — batas ukuran ledakan buatan (Explosive, TNT) supaya
-  server tidak lag saat level enchant sangat tinggi.
-- `debug` — jika `true`, semua kegagalan operasi (command vanilla gagal, aktor tidak ditemukan, dst)
-  dicatat ke log server.
+The `[endstone]` section in `config.toml` contains settings that do not exist in the original
+version and are required because of architectural differences:
 
-## Struktur proyek
+- `inventory-scan-interval` — how often (in ticks) the entire inventory is rescanned for new
+  enchants; armor and the held item are always checked every tick.
+- `emulate-ignite` — Endstone cannot call `setOnFire()`, so enchants such as Molten briefly
+  place a fire block at the target's feet. This can be disabled.
+- `explosion-max-size` / `explosion-max-blocks` — limits for custom explosion size (Explosive,
+  TNT) and the number of blocks it may remove, preventing server lag at very high enchant levels.
+- `debug` — when `true`, all failed operations (failed vanilla commands, missing actors, etc.)
+  are written to the server log.
+
+## Project structure
 
 ```
 src/endstone_piggy_custom_enchants/
-  plugin.py        # kelas Plugin utama, siklus hidup, util command/effect/damage
-  engine.py         # pemindaian equipment pemain, dispatch reaksi, tick, toggle
-  manager.py        # registry enchant, kompatibilitas, terapkan/lepas enchant di item
-  storage.py        # baca/tulis data enchant di NBT item (tag "PiggyCE")
-  compat.py         # jembatan ke command vanilla (/effect, /damage, /setblock)
-  projectiles.py    # deteksi panah custom & simulasi proyektil custom
-  motion.py         # gerak berbasis teleport (Jetpack, Grappling, dll)
-  explosion.py      # ulang mesin ledakan PiggyExplosion (ray-cast + damage + drop)
-  enchants/         # implementasi tiap enchant, dikelompokkan seperti struktur asli
+  plugin.py        # main Plugin class, lifecycle, command/effect/damage utilities
+  engine.py         # player equipment scanning, reaction dispatch, tick, toggle
+  manager.py        # enchant registry, compatibility, applying/removing enchants from items
+  storage.py        # reading/writing enchant data in item NBT (the "PiggyCE" tag)
+  compat.py         # bridge to vanilla commands (/effect, /damage, /setblock)
+  projectiles.py    # custom arrow detection and custom projectile simulation
+  motion.py         # teleport-based movement (Jetpack, Grappling, etc.)
+  explosion.py      # PiggyExplosion engine (ray cast + damage + drops)
+  enchants/         # each enchant implementation, grouped like the original structure
 tests/
-  test_core_logic.py  # unit test (lihat bagian status pengujian)
-  fake_pkg/endstone/  # tiruan minimal API Endstone, hanya untuk keperluan unit test
+  test_core_logic.py  # unit tests (see the testing status section)
+  fake_pkg/endstone/  # minimal Endstone API mock used only for unit tests
 ```
 
-## Lisensi
+## License
 
-Sama seperti proyek asli: Apache License 2.0 (lihat `LICENSE`). Hak cipta asli 2017 DaPigGuy.
+As with the original project: Apache License 2.0 (see `LICENSE`). Original copyright 2017
+DaPigGuy.
