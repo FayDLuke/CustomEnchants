@@ -1,4 +1,4 @@
-# CustomEnchants — EndstoneMC Port
+# CustomEnchants EndstoneMC Port
 
 **Official code:** https://github.com/DaPigGuy/PiggyCustomEnchants
 
