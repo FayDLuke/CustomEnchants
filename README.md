@@ -1,60 +1,6 @@
-# PiggyCustomEnchants — EndstoneMC Port
+# CustomEnchants — EndstoneMC Port
 
-This is a port of the **PiggyCustomEnchants** plugin (PocketMine-MP, by DaPigGuy) to
-[Endstone](https://endstone.dev/) 0.11.x for Minecraft: Bedrock Edition. The plugin was fully
-rewritten from PHP to Python because the two platforms are not binary- or API-compatible.
-
-All 91 custom enchants from the original plugin are **registered** and can be applied through
-`/ce enchant`. Most work exactly like the originals; some are emulated because Endstone 0.11 does
-not yet have APIs equivalent to PocketMine (see the [Fidelity Matrix](#fidelity-matrix) below).
-Nothing is silently removed — enchants that cannot be emulated remain registered, are marked
-"unsupported", and can be disabled through the config.
-
-## ⚠️ Testing status — read this first
-
-I (the assistant who created this port) **do not have access to a Bedrock Dedicated Server** in
-my working environment, so this code has **not yet been run on a real Endstone server**. I have
-verified the following:
-
-- All code compiles (`python3 -m py_compile`) without syntax errors.
-- 13 unit tests (`tests/test_core_logic.py`) pass, covering NBT storage (reading, writing, and
-  preserving other lore), registration of all 91 enchants without `KeyError`, enchantment
-  incompatibility checks, item-type classification (swords, bows, etc.), and `Engine` logic that
-  scans player equipment (armor and held items) and reconciles the on/off toggle state.
-- The `plugin.py`, `listeners.py`, and `commands.py` modules import successfully against the
-  mock `endstone` module (`tests/fake_pkg`), with no `ImportError` or `AttributeError` when
-  accessing the API attributes assumed by the port.
-
-The following **could not** be verified yet and must be tested directly on a server:
-
-- Whether the vanilla commands used as bridges (`/effect`, `/damage`, `/setblock ... destroy`)
-  behave as expected in the Bedrock version you use.
-- Whether the raw `RadarEnchant` (`SetSpawnPosition`) and `HallucinationEnchant` (`UpdateBlock`)
-  packets are accepted by clients without disconnecting them — this is the riskiest technique
-  used in this port.
-- The timing and feel of teleport-based movement emulation (Jetpack, Grappling, Forcefield,
-  etc.) — the speed values were copied from the original formulas but have not been experienced
-  directly.
-- Performance when many players use tick-heavy enchants (Forcefield, PoisonousCloud, Vacuum)
-  at the same time.
-
-Please report any bugs or unusual behavior so they can be fixed in future updates.
-
-## Installation
-
-1. Copy the `endstone-piggy-custom-enchants/` folder to a server with Python 3.10+ and Endstone
-   0.11 installed.
-2. Build the wheel:
-   ```bash
-   cd endstone-piggy-custom-enchants
-   pip install build
-   python -m build
-   ```
-3. Copy the resulting `.whl` file to the server's `plugins/` folder, then start the server.
-4. On first startup, the plugin creates `plugins/PiggyCustomEnchants/config.toml` along with
-   the data files `rarities.json`, `max_levels.json`, `display_names.json`, `descriptions.json`,
-   `extra_data.json`, `cooldowns.json`, and `chances.json` — just like the PocketMine version,
-   so you can tune them without touching the code.
+**Official code:** https://github.com/DaPigGuy/PiggyCustomEnchants
 
 ## Commands
 
@@ -71,11 +17,6 @@ Please report any bugs or unusual behavior so they can be fixed in future update
 
 Set `forms.enabled = true` in `config.toml` to use a GUI form like the original version.
 
-### Enchantment books
-
-As in the original: hold a plain or enchanted book containing a custom enchant in your main
-hand, place the target item in your off-hand, then right-click. This replaces PocketMine's
-"drag item onto book" mechanism, for which Endstone has no equivalent event.
 
 ## Fidelity Matrix
 
