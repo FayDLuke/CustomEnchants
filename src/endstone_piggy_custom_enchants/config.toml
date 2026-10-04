@@ -46,6 +46,15 @@ missile = true
 molotov = true
 self-destruct = true
 
+[combine]
+# /ce combine opens a hopper GUI (book slot + confirm + target item slot). Chance (0-100) that applying the
+# book succeeds, by the enchant's rarity. The book is ALWAYS consumed, whether it succeeds or fails.
+[combine.success-chance]
+common = 85
+uncommon = 65
+rare = 45
+mythic = 25
+
 [chicken]
 # Items the Chicken enchant may lay as a treasure, "item id:amount".
 drops = ["minecraft:gold_ingot:1"]

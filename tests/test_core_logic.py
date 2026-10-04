@@ -42,7 +42,14 @@ class FakePlugin:
         self.enchant_data.flush()
 
     def cfg(self, key, default=None):
-        return self._cfg.get(key, default)
+        # Mirrors the real plugin's dotted-path lookup (see PiggyCustomEnchants.cfg) so tests that set
+        # self._cfg["combine"] = {"success-chance": {...}} behave the same as the real config.toml.
+        node = self._cfg
+        for part in key.split("."):
+            if not isinstance(node, dict) or part not in node:
+                return default
+            node = node[part]
+        return node
 
     def is_disabled_in_world(self, key, player):
         return False
@@ -205,6 +212,139 @@ class EngineTests(unittest.TestCase):
         player.inventory.boots = None
         self.plugin.engine.reconcile_toggles(player, self.plugin.engine.state(player))
         self.assertEqual(calls, [True, False])
+
+
+class CombineTests(unittest.TestCase):
+    def setUp(self):
+        import pathlib
+        import tempfile
+        self.tmp = pathlib.Path(tempfile.mkdtemp())
+        self.plugin = FakePlugin(self.tmp)
+        from endstone_piggy_custom_enchants.combine import CombineService
+
+        self.plugin.combine = CombineService(self.plugin)
+        self.player = Player("Alex")
+
+    def test_rejects_missing_book(self):
+        target = ItemStack("minecraft:diamond_pickaxe")
+        air = ItemStack("minecraft:air")
+        result = self.plugin.combine.attempt(self.player, target, air)
+        self.assertFalse(result.success)
+        self.assertFalse(result.attempted)
+        self.assertFalse(result.consumed_book)
+
+    def test_rejects_wrong_item_kind(self):
+        driller = self.plugin.manager.get("driller")  # Kind.TOOLS
+        book = self.plugin.manager.make_book(driller, 1)
+        target = ItemStack("minecraft:diamond_sword")
+        result = self.plugin.combine.attempt(self.player, target, book)
+        self.assertFalse(result.success)
+        self.assertFalse(result.attempted)
+
+    def test_rejects_equal_or_higher_existing_level(self):
+        lifesteal = self.plugin.manager.get("lifesteal")
+        book = self.plugin.manager.make_book(lifesteal, 1)
+        target = ItemStack("minecraft:diamond_sword")
+        self.plugin.manager.add_enchant(target, lifesteal, 2)
+        result = self.plugin.combine.attempt(self.player, target, book)
+        self.assertFalse(result.success)
+        self.assertFalse(result.attempted)
+
+    def test_success_applies_enchant_and_consumes_book(self):
+        lifesteal = self.plugin.manager.get("lifesteal")
+        book = self.plugin.manager.make_book(lifesteal, 1)
+        target = ItemStack("minecraft:diamond_sword")
+        self.plugin._cfg["combine"] = {"success-chance": {"common": 100}}
+        result = self.plugin.combine.attempt(self.player, target, book)
+        self.assertTrue(result.success)
+        self.assertTrue(result.consumed_book)
+        self.assertEqual(self.plugin.manager.level_on(result.result_item, lifesteal), 1)
+
+    def test_failure_consumes_book_without_applying(self):
+        lifesteal = self.plugin.manager.get("lifesteal")
+        book = self.plugin.manager.make_book(lifesteal, 1)
+        target = ItemStack("minecraft:diamond_sword")
+        self.plugin._cfg["combine"] = {"success-chance": {"common": 0}}
+        result = self.plugin.combine.attempt(self.player, target, book)
+        self.assertFalse(result.success)
+        self.assertTrue(result.attempted)
+        self.assertTrue(result.consumed_book)
+        self.assertEqual(self.plugin.manager.level_on(target, lifesteal), 0)
+
+
+class CombineGuiTests(unittest.TestCase):
+    """Exercises combine_gui.py against the fake_pkg/endstone_inventoryui double (see its docstring for why
+    the real library can't be installed here). This checks our integration code, not the real library."""
+
+    def setUp(self):
+        import pathlib
+        import tempfile
+        self.tmp = pathlib.Path(tempfile.mkdtemp())
+        self.plugin = FakePlugin(self.tmp)
+        from endstone_piggy_custom_enchants.combine import CombineService
+        from endstone_piggy_custom_enchants.engine import Engine
+
+        self.plugin.combine = CombineService(self.plugin)
+        self.plugin.engine = Engine(self.plugin)
+        self.player = Player("Alex")
+
+    def open(self):
+        from endstone_piggy_custom_enchants import combine_gui
+
+        self.assertTrue(combine_gui.is_available())
+        opened = combine_gui.open_combine_menu(self.plugin, self.player)
+        self.assertTrue(opened)
+        from endstone_inventoryui import Menu
+
+        menu = next(m for m in _ALL_MENUS if self.player in m.get_viewers())
+        return menu
+
+    def test_locked_slots_discard(self):
+        menu = self.open()
+        for slot in (3, 4):
+            result = menu.click(self.player, slot)
+            self.assertTrue(result.should_discard)
+
+    def test_input_slots_proceed(self):
+        menu = self.open()
+        for slot in (0, 2):  # book, target
+            result = menu.click(self.player, slot)
+            self.assertTrue(result.should_continue)
+
+    def test_confirm_runs_combine_and_discards(self):
+        from endstone_piggy_custom_enchants import combine_gui
+
+        menu = self.open()
+        lifesteal = self.plugin.manager.get("lifesteal")
+        book = self.plugin.manager.make_book(lifesteal, 1)
+        target = ItemStack("minecraft:diamond_sword")
+        menu.inventory.set_item(combine_gui.SLOT_BOOK, book)
+        menu.inventory.set_item(combine_gui.SLOT_TARGET, target)
+        self.plugin._cfg["combine"] = {"success-chance": {"common": 100}}
+
+        result = menu.click(self.player, combine_gui.SLOT_CONFIRM)
+
+        self.assertTrue(result.should_discard)
+        self.assertEqual(menu.inventory.get_item(combine_gui.SLOT_BOOK).type.id, "minecraft:air")
+        applied = menu.inventory.get_item(combine_gui.SLOT_TARGET)
+        self.assertEqual(self.plugin.manager.level_on(applied, lifesteal), 1)
+
+
+# Menu instances aren't tracked globally by the real library either; the test fake needs a registry so
+# CombineGuiTests.open() can find the Menu that open_combine_menu() created, since that function doesn't
+# return it (the real API design: a GUI is "fire and forget" from the caller's perspective).
+import endstone_inventoryui as _inventoryui_module  # noqa: E402
+
+_ALL_MENUS: list = []
+_original_menu_init = _inventoryui_module.Menu.__init__
+
+
+def _tracking_init(self, *a, **k):
+    _original_menu_init(self, *a, **k)
+    _ALL_MENUS.append(self)
+
+
+_inventoryui_module.Menu.__init__ = _tracking_init
 
 
 if __name__ == "__main__":

@@ -27,7 +27,7 @@ class CommandHandler:
         rest = args[1:]
         handlers = {
             "about": self.about, "list": self.list_cmd, "info": self.info, "enchant": self.enchant,
-            "remove": self.remove, "nbt": self.nbt,
+            "give": self.give, "combine": self.combine, "remove": self.remove, "nbt": self.nbt,
         }
         if sub in ("", "help"):
             if isinstance(sender, Player) and self.plugin.forms_enabled():
@@ -50,6 +50,10 @@ class CommandHandler:
         lines = ["§aPiggyCustomEnchants", "§7/ce about", "§7/ce list", "§7/ce info <enchantment>"]
         if sender.has_permission(f"{PERM}.enchant"):
             lines.append("§7/ce enchant <enchantment> [level] [player]")
+        if sender.has_permission(f"{PERM}.give"):
+            lines.append("§7/ce give <enchantment> [level] [player]")
+        if sender.has_permission(f"{PERM}.combine"):
+            lines.append("§7/ce combine")
         if sender.has_permission(f"{PERM}.remove"):
             lines.append("§7/ce remove <enchantment> [player]")
         if sender.has_permission(f"{PERM}.nbt"):
@@ -200,6 +204,59 @@ class CommandHandler:
         self.plugin.engine.invalidate(target)
         sender.send_message("§aItem successfully enchanted.")
 
+    def give(self, sender: Any, args: list[str], form_data: tuple[str, str, str] | None = None) -> None:
+        """Gives an enchanted book instead of applying directly — pair with /ce combine for the risk-based
+        survival path, or hand it out and let an op apply it with /ce enchant for a guaranteed result."""
+        if form_data is None and isinstance(sender, Player) and self.plugin.forms_enabled() and not args:
+            self.give_form(sender)
+            return
+        if form_data is not None:
+            enchant_name, level_text, player_name = form_data
+        else:
+            enchant_name = args[0] if args else ""
+            level_text = args[1] if len(args) > 1 else "1"
+            player_name = args[2] if len(args) > 2 else ""
+        if not enchant_name or (not isinstance(sender, Player) and not player_name):
+            sender.send_message("Usage: /ce give <enchantment> [level] [player]")
+            return
+        try:
+            level = int(level_text or 1)
+        except ValueError:
+            self.fail(sender, "Enchantment level must be an integer")
+            return
+        if level <= 0:
+            self.fail(sender, "Level must be a positive integer.")
+            return
+        target = self.find_player(sender, player_name)
+        if target is None:
+            self.fail(sender, "Invalid player.")
+            return
+        manager = self.plugin.manager
+        enchant = manager.get(enchant_name)
+        if enchant is None:
+            self.fail(sender, "Invalid enchantment.")
+            return
+        if not sender.has_permission("piggycustomenchants.overridecheck"):
+            if not manager.is_enabled(enchant):
+                self.fail(sender, "This enchant is disabled" + (f": {enchant.unsupported_reason}" if enchant.unsupported_reason else "."))
+                return
+            if level > enchant.max_level:
+                self.fail(sender, f"The max level is {enchant.max_level}.")
+                return
+        book = manager.make_book(enchant, level)
+        leftover = target.inventory.add_item(book)
+        for rest in (leftover or {}).values():
+            target.dimension.drop_item(target.location, rest)
+        sender.send_message(f"§aGave {target.name} a {enchant.display_name} {level} book.")
+
+    def combine(self, sender: Any, args: list[str]) -> None:
+        if not isinstance(sender, Player):
+            sender.send_error_message("Please use this in-game.")
+            return
+        from .combine_gui import open_combine_menu
+
+        open_combine_menu(self.plugin, sender)
+
     def remove(self, sender: Any, args: list[str], form_data: tuple[str, str] | None = None) -> None:
         if form_data is None and isinstance(sender, Player) and self.plugin.forms_enabled() and not args:
             self.remove_form(sender)
@@ -238,8 +295,8 @@ class CommandHandler:
 
     def main_form(self, player: Player) -> None:
         entries = [
-            ("About", "about"), ("List", "list"), ("Info", "info"), ("Enchant", "enchant"), ("Remove", "remove"),
-            ("NBT", "nbt"),
+            ("About", "about"), ("List", "list"), ("Info", "info"), ("Enchant", "enchant"), ("Give Book", "give"),
+            ("Combine", "combine"), ("Remove", "remove"), ("NBT", "nbt"),
         ]
         buttons = []
         for label, sub in entries:
@@ -284,6 +341,11 @@ class CommandHandler:
         self._modal(player, "§aApply Custom Enchantment",
                     [TextInput("Enchantment"), TextInput("Level", "", "1"), TextInput("Player", "", player.name)],
                     lambda p, v: self.enchant(p, [], (v[0], v[1], v[2])))
+
+    def give_form(self, player: Player) -> None:
+        self._modal(player, "§aGive Enchant Book",
+                    [TextInput("Enchantment"), TextInput("Level", "", "1"), TextInput("Player", "", player.name)],
+                    lambda p, v: self.give(p, [], (v[0], v[1], v[2])))
 
     def remove_form(self, player: Player) -> None:
         self._modal(player, "§aRemove Custom Enchantment", [TextInput("Enchantment"), TextInput("Player", "", player.name)],

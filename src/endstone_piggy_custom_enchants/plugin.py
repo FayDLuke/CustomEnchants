@@ -11,6 +11,7 @@ from endstone.plugin import Plugin
 
 from . import storage
 from .allies import AllyChecks
+from .combine import CombineService
 from .commands import CommandHandler
 from .compat import Combat, Commands, EffectManager, WorldOps
 from .constants import DEFAULT_RARITY_COLORS, PROJECTILE_TYPES, UNBREAKABLE_BLOCKS
@@ -41,15 +42,19 @@ class PiggyCustomEnchants(Plugin):
     description = "Custom enchantments for Endstone (port of DaPigGuy's PiggyCustomEnchants)"
     authors = ["DaPigGuy (original plugin)", "Endstone port"]
     website = "https://github.com/DaPigGuy/PiggyCustomEnchants"
+    # Loads after endstone-inventoryui when it's present, since /ce combine needs its packet listener
+    # already registered; the plugin still works without it (only /ce combine will error out).
+    soft_depend = ["InventoryUIPlugin"]
 
     commands = {
         "customenchants": {
             "description": "Manage PiggyCustomEnchants custom enchantments",
             "usages": [
                 "/customenchants",
-                "/customenchants <about|list|nbt>",
+                "/customenchants <about|list|nbt|combine>",
                 "/customenchants info [enchantment: string]",
                 "/customenchants enchant [enchantment: string] [level: int] [player: player]",
+                "/customenchants give [enchantment: string] [level: int] [player: player]",
                 "/customenchants remove [enchantment: string] [player: player]",
             ],
             "aliases": ["ce", "customenchant"],
@@ -61,7 +66,11 @@ class PiggyCustomEnchants(Plugin):
         "piggycustomenchants.command.ce": {"description": "Allows using /ce", "default": True},
         "piggycustomenchants.command.ce.about": {"description": "Allows /ce about", "default": True},
         "piggycustomenchants.command.ce.list": {"description": "Allows /ce list and /ce info", "default": True},
-        "piggycustomenchants.command.ce.enchant": {"description": "Allows /ce enchant", "default": "op"},
+        "piggycustomenchants.command.ce.enchant": {"description": "Allows /ce enchant (apply directly, guaranteed)", "default": "op"},
+        "piggycustomenchants.command.ce.give": {"description": "Allows /ce give (hand out an enchant book)", "default": "op"},
+        "piggycustomenchants.command.ce.combine": {
+            "description": "Allows /ce combine (the risk-based book + item GUI)", "default": True,
+        },
         "piggycustomenchants.command.ce.remove": {"description": "Allows /ce remove", "default": "op"},
         "piggycustomenchants.command.ce.nbt": {"description": "Allows /ce nbt", "default": "op"},
         "piggycustomenchants.overridecheck": {
@@ -101,6 +110,7 @@ class PiggyCustomEnchants(Plugin):
         self.world = WorldOps(self)
         self.motion = MotionManager(self)
         self.projectiles = ProjectileManager(self)
+        self.combine = CombineService(self)
         self.engine = Engine(self)
         self.manager = CustomEnchantManager(self)
         self.enchant_data = EnchantData(Path(self.data_folder), RESOURCES)
@@ -119,6 +129,13 @@ class PiggyCustomEnchants(Plugin):
         )
         for player in self.server.online_players:
             self.engine.invalidate(player)
+        from .combine_gui import is_available as combine_gui_available
+
+        if not combine_gui_available():
+            self.logger.warning(
+                "/ce combine needs the 'endstone-inventoryui' plugin, which isn't installed — that "
+                "subcommand will error out until it's added. Everything else works normally."
+            )
 
     def on_disable(self) -> None:
         try:

@@ -10,10 +10,11 @@ readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"
 keywords = ["endstone", "plugin", "enchantments", "bedrock"]
-dependencies = []
+# endstone-inventoryui powers /ce combine (a custom hopper GUI); everything else works without it.
+dependencies = ["endstone-inventoryui>=2.0.6"]
 authors = [
     { name = "DaPigGuy (original)" },
-    { name = "Luke (port)" },
+    { name = "Endstone port" },
 ]
 
 [project.entry-points."endstone"]
